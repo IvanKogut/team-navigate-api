@@ -3,6 +3,7 @@ class EventsController < ApplicationController
 
   # GET /events
   def index
+    # get current user events
     @events = Event.all
     json_response(@events)
   end

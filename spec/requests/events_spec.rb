@@ -1,18 +1,22 @@
 require 'rails_helper'
 
-RSpec.describe 'Navigate API', type: :request do
+RSpec.describe 'Events API', type: :request do
+  let(:name) { 'simple name' }
   # initialize test data
-  let!(:events) { create_list(:event, 10) }
+  # add events owner
+  let(:user) { create(:user) }
+  let!(:events) { create_list(:event, 10, created_by: user.id) }
   let(:event_id) { events.first.id }
-  let(:name) { "simple name" }
+  # authorize request
+  let(:headers) { valid_headers }
 
   # Test suite for GET /events
   describe 'GET /events' do
-    # make HTTP get request before each example
-    before { get '/events' }
+    # make HTTP get request with headers before each example
+    before { get '/events', params: {}, headers: headers }
 
     it 'returns events' do
-      # Note `json` is a custom helper to parse JSON responses
+      # Note 'json' is a custom helper to parse JSON responses
       expect(json).not_to be_empty
       expect(json.size).to eq(10)
     end
@@ -22,9 +26,9 @@ RSpec.describe 'Navigate API', type: :request do
     end
   end
 
-  # Test suite for GET /events/:id
-  describe 'GET /events/:id' do
-    before { get "/events/#{event_id}" }
+  # Test suite fr GET /events/:id
+  describe 'GET /events/id' do
+    before { get "/events/#{event_id}", params: {}, headers: headers }
 
     context 'when the record exists' do
       it 'returns the event' do
@@ -51,42 +55,45 @@ RSpec.describe 'Navigate API', type: :request do
   end
 
   # Test suite for POST /events
-  describe 'POST /events' do
+  describe "POST /events" do
     # valid payload
-    let(:valid_attributes) { { title: 'Learn Elm', created_by: '1' } }
+    let(:valid_attributes) do
+      # send json payload
+     { title: 'Learn Elm', created_by: user.id.to_s }.to_json
+    end
 
-    context 'when the request is valid' do
-      before { post '/events', params: valid_attributes }
+    context 'when  the request is valid' do
+      before { post '/events', params: valid_attributes, headers: headers }
 
-      it 'creates an event' do
+      it 'creats an event' do
         expect(json['title']).to eq('Learn Elm')
       end
-
       it 'returns status code 201' do
         expect(response).to have_http_status(201)
       end
     end
 
     context 'when the request is invalid' do
-      before { post '/events', params: { title: 'Foobar' } }
+      let(:invalid_attributes) { { title: nil }.to_json}
+      before { post '/events', params: invalid_attributes, headers: headers }
 
       it 'returns status code 422' do
         expect(response).to have_http_status(422)
       end
 
       it 'returns a validation failure message' do
-        expect(response.body)
-          .to match(/Validation failed: Created by can't be blank/)
+        expect(json['message'])
+          .to match(/Validation failed: Title can't be blank/)
       end
     end
   end
 
   # Test suite for PUT /events/:id
   describe 'PUT /events/:id' do
-    let(:valid_attributes) { { title: 'Shopping' } }
+    let(:valid_attributes) { { title: 'Shopping' }.to_json }
 
     context 'when the record exists' do
-      before { put "/events/#{event_id}", params: valid_attributes }
+      before { put "/events/#{event_id}", params: valid_attributes, headers: headers }
 
       it 'updates the record' do
         expect(response.body).to be_empty
@@ -100,7 +107,7 @@ RSpec.describe 'Navigate API', type: :request do
 
   # Test suite for DELETE /events/:id
   describe 'DELETE /events/:id' do
-    before { delete "/events/#{event_id}" }
+    before { delete "/events/#{event_id}", params: {}, headers: headers }
 
     it 'returns status code 204' do
       expect(response).to have_http_status(204)
